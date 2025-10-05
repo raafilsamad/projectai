@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Online Quiz App</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #4b6cb7, #182848);
+      color: #fff;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .quiz-container {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 25px 35px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 28px;
+      margin-bottom: 20px;
+      color: #fff;
+      letter-spacing: 1px;
+    }
+
+    #timer {
+      font-size: 20px;
+      margin-bottom: 10px;
+      color: #ffea00;
+      font-weight: bold;
+    }
+
+    .question {
+      font-size: 18px;
+      margin: 20px 0;
+    }
+
+    .options button {
+      display: block;
+      background-color: rgba(255, 255, 255, 0.9);
+      color: #222;
+      border: none;
+      border-radius: 10px;
+      padding: 12px;
+      margin: 10px 0;
+      width: 100%;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .options button:hover {
+      background-color: #ffd700;
+      transform: scale(1.05);
+    }
+
+    #next-btn {
+      background-color: #00c3ff;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 20px;
+      margin-top: 15px;
+      font-size: 16px;
+      cursor: pointer;
+      display: none;
+      transition: all 0.3s ease;
+    }
+
+    #next-btn:hover {
+      background-color: #0095cc;
+    }
+
+    #result {
+      font-size: 20px;
+      margin-top: 20px;
+      font-weight: bold;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="quiz-container">
+    <h1>Online Quiz</h1>
+    <div id="timer">Time Left: 30s</div>
+    <div id="question" class="question">Loading question...</div>
+    <div id="options" class="options"></div>
+    <button id="next-btn">Next</button>
+    <div id="result"></div>
+  </div>
+
+  <script>
+    const questionEl = document.getElementById('question');
+    const optionsEl = document.getElementById('options');
+    const nextBtn = document.getElementById('next-btn');
+    const resultEl = document.getElementById('result');
+    const timerEl = document.getElementById('timer');
+
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let questions = [];
+    let timeLeft = 30;
+    let timer;
+
+    // ✅ Fetch 10 unique questions from Open Trivia DB
+    async function loadQuestions() {
+      const res = await fetch('https://opentdb.com/api.php?amount=10&type=multiple');
+      const data = await res.json();
+      questions = data.results.map((q) => {
+        const options = [...q.incorrect_answers, q.correct_answer];
+        // Shuffle options randomly
+        for (let i = options.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [options[i], options[j]] = [options[j], options[i]];
+        }
+        return {
+          question: q.question,
+          options,
+          correct: q.correct_answer
+        };
+      });
+      showQuestion();
+    }
+
+    function showQuestion() {
+      clearInterval(timer);
+      timeLeft = 30;
+      startTimer();
+
+      let current = questions[currentQuestionIndex];
+      questionEl.innerHTML = `Q${currentQuestionIndex + 1}. ${current.question}`;
+      optionsEl.innerHTML = '';
+      resultEl.textContent = '';
+
+      current.options.forEach(option => {
+        const btn = document.createElement('button');
+        btn.innerHTML = option;
+        btn.onclick = () => checkAnswer(btn, current.correct);
+        optionsEl.appendChild(btn);
+      });
+
+      nextBtn.style.display = 'none';
+    }
+
+    function checkAnswer(selectedBtn, correctAnswer) {
+      clearInterval(timer);
+      const buttons = optionsEl.querySelectorAll('button');
+      buttons.forEach(btn => {
+        btn.disabled = true;
+        if (btn.innerHTML === correctAnswer) {
+          btn.style.backgroundColor = '#4CAF50'; // green
+          btn.style.color = '#fff';
+        } else if (btn === selectedBtn) {
+          btn.style.backgroundColor = '#ff4d4d'; // red
+          btn.style.color = '#fff';
+        }
+      });
+
+      if (selectedBtn.innerHTML === correctAnswer) {
+        score++;
+      }
+
+      nextBtn.style.display = 'inline-block';
+    }
+
+    function startTimer() {
+      timerEl.textContent = `Time Left: ${timeLeft}s`;
+      timer = setInterval(() => {
+        timeLeft--;
+        timerEl.textContent = `Time Left: ${timeLeft}s`;
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          showResult();
+        }
+      }, 1000);
+    }
+
+    nextBtn.addEventListener('click', () => {
+      currentQuestionIndex++;
+      if (currentQuestionIndex < questions.length) {
+        showQuestion();
+      } else {
+        showResult();
+      }
+    });
+
+    function showResult() {
+      clearInterval(timer);
+      questionEl.textContent = "Quiz Completed!";
+      optionsEl.innerHTML = '';
+      nextBtn.style.display = 'none';
+      resultEl.innerHTML = `Your Score: <strong>${score} / ${questions.length}</strong>`;
+    }
+
+    // Start
+    loadQuestions();
+  </script>
+</body>
+</html>
