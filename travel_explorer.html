@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Travel Explorer</title>
+<style>
+  body{margin:0;font-family:sans-serif;background:#071026;color:#e6eef6;}
+  header{padding:12px;background:#0b1220;display:flex;justify-content:space-between;align-items:center;}
+  input{padding:8px;border-radius:6px;border:none;min-width:200px;}
+  button{padding:8px 12px;border:none;border-radius:6px;background:#7dd3fc;color:#012;cursor:pointer;}
+  .container{display:flex;gap:12px;padding:12px;}
+  .left{flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;}
+  .right{width:300px;display:flex;flex-direction:column;gap:12px;}
+  .card{position:relative;cursor:pointer;}
+  .card img{width:100%;border-radius:8px;}
+  .preview img{width:100%;border-radius:8px;}
+  .weather-card{background:#0b1220;padding:12px;border-radius:8px;}
+  .muted{color:#9aa6b2;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Travel Explorer</h1>
+  <div>
+    <input id="searchInput" type="text" placeholder="Search city (e.g. Paris)">
+    <button id="searchBtn">Search</button>
+  </div>
+</header>
+
+<main class="container">
+  <section class="left" id="gallery"><p class="muted">Search a city to see images</p></section>
+  <aside class="right">
+    <div class="preview" id="preview"><p class="muted">Click a photo to see preview & weather</p></div>
+    <div class="weather-card" id="weatherCard">
+      <h3>Weather</h3>
+      <div id="weatherContent" class="muted">No city selected</div>
+    </div>
+  </aside>
+</main>
+
+<script>
+const PEXELS_API_KEY = "6z1TL6liurKV5wXmJzRaGLQxF9t9L9dZ9MRRqv5jyrsxUFKWwpkfoL95"; // Put your Pexels API key here
+
+const searchInput = document.getElementById("searchInput");
+const searchBtn = document.getElementById("searchBtn");
+const gallery = document.getElementById("gallery");
+const preview = document.getElementById("preview");
+const weatherContent = document.getElementById("weatherContent");
+
+searchBtn.addEventListener("click",()=>doSearch(searchInput.value.trim()));
+searchInput.addEventListener("keydown",(e)=>{if(e.key==="Enter") doSearch(searchInput.value.trim());});
+
+async function doSearch(query){
+  if(!query){ gallery.innerHTML='<p class="muted">Type a destination</p>'; return; }
+  gallery.innerHTML='<p class="muted">Searching photos...</p>';
+  try{
+    const res = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=20`,{
+      headers:{Authorization:PEXELS_API_KEY}
+    });
+    if(!res.ok) throw new Error("Pexels API error");
+    const data = await res.json();
+    showGallery(data.photos,query);
+  }catch(err){ console.error(err); gallery.innerHTML='<p class="muted">Error fetching photos</p>'; }
+}
+
+function showGallery(photos,query){
+  if(!photos || photos.length===0){ gallery.innerHTML=`<p class="muted">No images found for ${query}</p>`; return; }
+  gallery.innerHTML="";
+  photos.forEach(photo=>{
+    const card=document.createElement("div"); card.className="card";
+    card.innerHTML=`<img src="${photo.src.medium}" alt="${photo.photographer}">`;
+    card.addEventListener("click",()=>showPreview(photo,query));
+    gallery.appendChild(card);
+  });
+  showPreview(photos[0],query);
+}
+
+function showPreview(photo,city){
+  preview.innerHTML=`<img src="${photo.src.large}" alt="${photo.photographer}"><p class="muted">Photo by ${photo.photographer}</p>`;
+  fetchWeather(city);
+}
+
+// Sample weather function (works without OpenWeatherMap)
+function fetchWeather(city){
+  const sampleWeather = {
+    description: "clear sky",
+    temp: 28,
+    icon: "01d"
+  };
+  
+  weatherContent.innerHTML = `
+    <strong>${city}</strong><br>
+    ${sampleWeather.description}<br>
+    ${sampleWeather.temp}°C<br>
+    <img src="https://openweathermap.org/img/wn/${sampleWeather.icon}@2x.png" 
+         alt="${sampleWeather.description}" style="width:60px;">
+  `;
+}
+
+// Initial search for demo
+doSearch("Paris");
+</script>
+
+</body>
+</html>
